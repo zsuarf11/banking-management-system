@@ -53,9 +53,10 @@ BankingManagementSystem/
 │
 └── README.md
 
+```md
 ## 5. Author
 
-Student Name: Bui Dang Cuong 
-Course: Introduction to Databases
+Student Name: Bui Dang Cuong  
+Student ID: 11247147  
+Course: Introduction to Databases  
 Project: Project 09 - Banking Management System
-Student ID: 11247147
