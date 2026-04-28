@@ -52,8 +52,7 @@ BankingManagementSystem/
 │   └── Banking_Management_System_Report.pdf
 │
 └── README.md
-
-```md
+```
 ## 5. Author
 
 Student Name: Bui Dang Cuong  
