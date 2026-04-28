@@ -1,0 +1,25 @@
+USE banking_management_system;
+
+CREATE ROLE IF NOT EXISTS manager_role;
+CREATE ROLE IF NOT EXISTS teller_role;
+CREATE ROLE IF NOT EXISTS auditor_role;
+
+GRANT ALL PRIVILEGES ON banking_management_system.* TO manager_role;
+
+GRANT SELECT, INSERT, UPDATE ON banking_management_system.Customers TO teller_role;
+GRANT SELECT, INSERT, UPDATE ON banking_management_system.Accounts TO teller_role;
+GRANT SELECT, INSERT ON banking_management_system.Transactions TO teller_role;
+
+GRANT SELECT ON banking_management_system.* TO auditor_role;
+
+CREATE USER IF NOT EXISTS 'manager_user'@'localhost' IDENTIFIED BY 'Manager@123';
+CREATE USER IF NOT EXISTS 'teller_user'@'localhost' IDENTIFIED BY 'Teller@123';
+CREATE USER IF NOT EXISTS 'auditor_user'@'localhost' IDENTIFIED BY 'Auditor@123';
+
+GRANT manager_role TO 'manager_user'@'localhost';
+GRANT teller_role TO 'teller_user'@'localhost';
+GRANT auditor_role TO 'auditor_user'@'localhost';
+
+SET DEFAULT ROLE manager_role TO 'manager_user'@'localhost';
+SET DEFAULT ROLE teller_role TO 'teller_user'@'localhost';
+SET DEFAULT ROLE auditor_role TO 'auditor_user'@'localhost';

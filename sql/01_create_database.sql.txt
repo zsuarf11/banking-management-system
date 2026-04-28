@@ -1,0 +1,54 @@
+DROP DATABASE IF EXISTS banking_management_system;
+CREATE DATABASE banking_management_system;
+USE banking_management_system;
+
+CREATE TABLE Customers (
+    CustomerID INT AUTO_INCREMENT PRIMARY KEY,
+    CustomerName VARCHAR(100) NOT NULL,
+    PhoneNumber VARCHAR(20) UNIQUE NOT NULL,
+    Address VARCHAR(255)
+);
+
+CREATE TABLE Branches (
+    BranchID INT AUTO_INCREMENT PRIMARY KEY,
+    BranchName VARCHAR(100) NOT NULL,
+    Address VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Accounts (
+    AccountID INT AUTO_INCREMENT PRIMARY KEY,
+    CustomerID INT NOT NULL,
+    Balance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    OpenDate DATE NOT NULL,
+    CONSTRAINT chk_balance CHECK (Balance >= 0),
+    CONSTRAINT fk_accounts_customers
+        FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE Employees (
+    EmployeeID INT AUTO_INCREMENT PRIMARY KEY,
+    EmployeeName VARCHAR(100) NOT NULL,
+    Position VARCHAR(50) NOT NULL,
+    BranchID INT NOT NULL,
+    CONSTRAINT fk_employees_branches
+        FOREIGN KEY (BranchID) REFERENCES Branches(BranchID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TABLE Transactions (
+    TransactionID INT AUTO_INCREMENT PRIMARY KEY,
+    AccountID INT NOT NULL,
+    TransactionDate DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Amount DECIMAL(15,2) NOT NULL,
+    TransactionType VARCHAR(20) NOT NULL,
+    CONSTRAINT chk_transaction_amount CHECK (Amount > 0),
+    CONSTRAINT chk_transaction_type CHECK 
+        (TransactionType IN ('Deposit', 'Withdrawal', 'Transfer')),
+    CONSTRAINT fk_transactions_accounts
+        FOREIGN KEY (AccountID) REFERENCES Accounts(AccountID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);

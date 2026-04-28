@@ -1,0 +1,212 @@
+USE banking_management_system;
+
+-- =========================
+-- 1. INDEXES
+-- =========================
+
+CREATE INDEX idx_accounts_customer
+ON Accounts(CustomerID);
+
+CREATE INDEX idx_transactions_account
+ON Transactions(AccountID);
+
+CREATE INDEX idx_transactions_date
+ON Transactions(TransactionDate);
+
+
+-- =========================
+-- 2. VIEWS
+-- =========================
+
+CREATE OR REPLACE VIEW CustomerBalanceView AS
+SELECT 
+    c.CustomerID,
+    c.CustomerName,
+    c.PhoneNumber,
+    c.Address,
+    a.AccountID,
+    a.Balance,
+    a.OpenDate
+FROM Customers c
+JOIN Accounts a ON c.CustomerID = a.CustomerID;
+
+
+CREATE OR REPLACE VIEW TransactionSummaryView AS
+SELECT 
+    a.AccountID,
+    c.CustomerName,
+    COUNT(t.TransactionID) AS TotalTransactions,
+    IFNULL(SUM(t.Amount), 0) AS TotalTransactionAmount
+FROM Accounts a
+JOIN Customers c ON a.CustomerID = c.CustomerID
+LEFT JOIN Transactions t ON a.AccountID = t.AccountID
+GROUP BY a.AccountID, c.CustomerName;
+
+
+-- =========================
+-- 3. STORED PROCEDURES
+-- =========================
+
+DROP PROCEDURE IF EXISTS DepositMoney;
+DROP PROCEDURE IF EXISTS WithdrawMoney;
+DROP PROCEDURE IF EXISTS TransferMoney;
+
+DELIMITER //
+
+CREATE PROCEDURE DepositMoney(
+    IN p_AccountID INT,
+    IN p_Amount DECIMAL(15,2)
+)
+BEGIN
+    IF p_Amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Deposit amount must be greater than zero';
+    ELSE
+        UPDATE Accounts
+        SET Balance = Balance + p_Amount
+        WHERE AccountID = p_AccountID;
+
+        INSERT INTO Transactions(AccountID, Amount, TransactionType)
+        VALUES(p_AccountID, p_Amount, 'Deposit');
+    END IF;
+END //
+
+
+CREATE PROCEDURE WithdrawMoney(
+    IN p_AccountID INT,
+    IN p_Amount DECIMAL(15,2)
+)
+BEGIN
+    DECLARE current_balance DECIMAL(15,2);
+
+    SELECT Balance INTO current_balance
+    FROM Accounts
+    WHERE AccountID = p_AccountID;
+
+    IF p_Amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Withdrawal amount must be greater than zero';
+
+    ELSEIF current_balance < p_Amount THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient balance';
+
+    ELSE
+        UPDATE Accounts
+        SET Balance = Balance - p_Amount
+        WHERE AccountID = p_AccountID;
+
+        INSERT INTO Transactions(AccountID, Amount, TransactionType)
+        VALUES(p_AccountID, p_Amount, 'Withdrawal');
+    END IF;
+END //
+
+
+CREATE PROCEDURE TransferMoney(
+    IN p_FromAccountID INT,
+    IN p_ToAccountID INT,
+    IN p_Amount DECIMAL(15,2)
+)
+BEGIN
+    DECLARE from_balance DECIMAL(15,2);
+
+    SELECT Balance INTO from_balance
+    FROM Accounts
+    WHERE AccountID = p_FromAccountID;
+
+    IF p_Amount <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Transfer amount must be greater than zero';
+
+    ELSEIF from_balance < p_Amount THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient balance for transfer';
+
+    ELSE
+        UPDATE Accounts
+        SET Balance = Balance - p_Amount
+        WHERE AccountID = p_FromAccountID;
+
+        UPDATE Accounts
+        SET Balance = Balance + p_Amount
+        WHERE AccountID = p_ToAccountID;
+
+        INSERT INTO Transactions(AccountID, Amount, TransactionType)
+        VALUES(p_FromAccountID, p_Amount, 'Transfer');
+
+        INSERT INTO Transactions(AccountID, Amount, TransactionType)
+        VALUES(p_ToAccountID, p_Amount, 'Transfer');
+    END IF;
+END //
+
+DELIMITER ;
+
+
+-- =========================
+-- 4. USER DEFINED FUNCTIONS
+-- =========================
+
+DROP FUNCTION IF EXISTS ComputeInterest;
+DROP FUNCTION IF EXISTS CheckMinimumBalance;
+
+DELIMITER //
+
+CREATE FUNCTION ComputeInterest(
+    p_Balance DECIMAL(15,2),
+    p_Rate DECIMAL(5,2)
+)
+RETURNS DECIMAL(15,2)
+DETERMINISTIC
+BEGIN
+    RETURN p_Balance * p_Rate / 100;
+END //
+
+
+CREATE FUNCTION CheckMinimumBalance(
+    p_Balance DECIMAL(15,2),
+    p_MinBalance DECIMAL(15,2)
+)
+RETURNS VARCHAR(30)
+DETERMINISTIC
+BEGIN
+    IF p_Balance >= p_MinBalance THEN
+        RETURN 'Valid';
+    ELSE
+        RETURN 'Below Minimum';
+    END IF;
+END //
+
+DELIMITER ;
+
+
+-- =========================
+-- 5. TRIGGER
+-- =========================
+
+CREATE TABLE IF NOT EXISTS SuspiciousLogs (
+    LogID INT AUTO_INCREMENT PRIMARY KEY,
+    AccountID INT,
+    Amount DECIMAL(15,2),
+    LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Message VARCHAR(255)
+);
+
+DROP TRIGGER IF EXISTS trg_suspicious_transaction;
+
+DELIMITER //
+
+CREATE TRIGGER trg_suspicious_transaction
+AFTER INSERT ON Transactions
+FOR EACH ROW
+BEGIN
+    IF NEW.Amount >= 100000000 THEN
+        INSERT INTO SuspiciousLogs(AccountID, Amount, Message)
+        VALUES(
+            NEW.AccountID,
+            NEW.Amount,
+            'Suspicious high-value transaction detected'
+        );
+    END IF;
+END //
+
+DELIMITER ;
