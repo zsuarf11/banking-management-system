@@ -49,8 +49,6 @@ BankingManagementSystem/
 ├── screenshots/
 │   └── project screenshots
 │
-├── report/
-│   └── Banking_Management_System_Report.pdf
 │
 └── README.md
 ```
