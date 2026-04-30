@@ -40,7 +40,8 @@ BankingManagementSystem/
 │
 ├── python/
 │   ├── db_connection.py
-│   └── banking_app.py
+│   ├── banking_app.py
+│   └── generate_charts.py
 │
 ├── diagrams/
 │   └── banking_erd.png
